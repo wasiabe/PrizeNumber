@@ -4,6 +4,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -13,12 +14,14 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private RecyclerView mRecyclerView;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
-    private ArrayList<PrizeNumber> myDataset = new ArrayList<PrizeNumber>();
+    private ArrayList<String> myDataset = new ArrayList<String>();
+    private ArrayList<PrizeNumber> prizeNumbers ;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,31 +32,34 @@ public class MainActivity extends AppCompatActivity {
         // use a linear layout manager
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
-/*
-        for(int i=0; i<10; i++) {
-            PrizeNumber p = new PrizeNumber();
-            String y = String.valueOf(100 + i);
-            p.year = y;
-            myDataset.add(p);
-        }
-*/
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
-        DatabaseReference drPrizeNumbers = FirebaseDatabase.getInstance().getReference("prize_numbers_1060102");
 
-        drPrizeNumbers.addValueEventListener(new ValueEventListener() {
+        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("prizenumbers");
+        ref.orderByChild("period");
+
+        ref.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
+                String period;
                 myDataset.clear();
+                prizeNumbers = new ArrayList<PrizeNumber>();
 
                 for (DataSnapshot ds : dataSnapshot.getChildren() ){
-                    PrizeNumber pn = new PrizeNumber();
-                    pn.number = ds.child("number").getValue().toString();
-                    myDataset.add(pn);
+                    period = ds.child("period").getValue().toString();
+                    for(DataSnapshot rules : ds.child("rules").getChildren()) {
+                        PrizeNumber pn = new PrizeNumber();
+                        pn.number = rules.child("number").getValue().toString();
+                        pn.matchs = (ArrayList<Integer>) rules.child("matchs").getValue();
+                        pn.prizes = (ArrayList<Integer>) rules.child("prizes").getValue();
+                        prizeNumbers.add(pn);
+                    };
+                    myDataset.add(period);
                 }
 
                 // specify an adapter (see also next example)
                 mAdapter = new MyAdapter(myDataset);
                 mRecyclerView.setAdapter(mAdapter);
+
             }
 
             @Override
@@ -61,6 +67,10 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+    }
+
+    private void setRecyclerViewItemTouchListener() {
 
     }
 }
