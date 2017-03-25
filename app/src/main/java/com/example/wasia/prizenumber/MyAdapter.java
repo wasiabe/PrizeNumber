@@ -1,10 +1,19 @@
 package com.example.wasia.prizenumber;
 
+import android.app.Activity;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 
@@ -13,21 +22,55 @@ import java.util.ArrayList;
  */
 
 public class MyAdapter extends RecyclerView.Adapter<MyAdapter.PrizeNumberHolder>{
-    private ArrayList<PrizeNumber> mDataset ;
+    private ArrayList<String> mDataset ;
 
-    public MyAdapter(ArrayList<PrizeNumber> myDataset) {
+    public MyAdapter(ArrayList<String> myDataset) {
         mDataset = myDataset;
     }
 
-    public static class PrizeNumberHolder extends RecyclerView.ViewHolder{
-        public TextView prizeyear;
-        public TextView prizemonth;
+    public class PrizeNumberHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
+        public TextView period;
 
         public PrizeNumberHolder(View v) {
             super(v);
-            prizeyear = (TextView)v.findViewById(R.id.PrizeYear);
-            prizemonth = (TextView)v.findViewById(R.id.PrizeMonth);
+            period = (TextView)v.findViewById(R.id.period);
+            v.setOnClickListener(this);
+        }
 
+        @Override
+        public void onClick(final View view) {
+            final View v = view;
+            int position  =   getAdapterPosition();
+            Log.d("RecyclerView", "CLICK!");
+            Log.d("ItemClicked:", "Selected:"+ mDataset.get(position));
+
+            DatabaseReference ref = FirebaseDatabase.getInstance().getReference("prizenumbers");
+            ref.orderByChild("period").equalTo(mDataset.get(position));
+
+            ref.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    String period;
+                    for (DataSnapshot ds : dataSnapshot.getChildren() ){
+                        for(DataSnapshot rules : ds.child("rules").getChildren()) {
+                            PrizeNumber pn = new PrizeNumber();
+                            pn.number = rules.child("number").getValue().toString();
+                            pn.matchs = (ArrayList<Integer>) rules.child("matchs").getValue();
+                            pn.prizes = (ArrayList<Integer>) rules.child("prizes").getValue();
+                            String ReceiptNumber = "SR12340000";
+                            int Prize = pn.CheckPrizeNumber(ReceiptNumber);
+                            if (Prize > 0) {
+                                Toast.makeText(v.getContext(), "Prize is " + Prize, Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
         }
     }
 
@@ -36,15 +79,14 @@ public class MyAdapter extends RecyclerView.Adapter<MyAdapter.PrizeNumberHolder>
         // create a new view
         View inflatedView = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.prize_number_item, parent, false);
-        // set the view's size, margins, paddings and layout parameters
-        // return view holder
+
         return new PrizeNumberHolder(inflatedView);
     }
 
     @Override
     public void onBindViewHolder(PrizeNumberHolder holder, int position) {
-        PrizeNumber pn = (PrizeNumber)mDataset.get(position);
-        holder.prizeyear.setText(pn.number);
+        String period = (String)mDataset.get(position);
+        holder.period.setText(period);
 
     }
 
